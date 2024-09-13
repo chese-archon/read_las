@@ -9,14 +9,14 @@ from matplotlib.colors import LightSource
 import matplotlib.pyplot as plt
 
 inFile = pylas.read("C:/Users/zilberman/Downloads/serpent-small.las")
-
+num_points = inFile.header.point_count
 print('The total point is:', inFile.header.point_count)
 
 print(*inFile.point_format.dimension_names, sep='\n')
 # x, y, z
 points = list(zip(inFile.x, inFile.y, inFile.z))
 x, y, z = inFile.x, inFile.y, inFile.z
-# Assign band variable
+# colors from .las
 r = inFile.red
 g = inFile.green
 b = inFile.blue
@@ -39,4 +39,4 @@ plt.ylabel('height')
 
 
 # Show plot
-plt.show()
+#plt.show()

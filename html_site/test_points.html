@@ -1,0 +1,104 @@
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <title>Rounded Point. WebGL 1.0, JavaScript</title>
+</head>
+
+<body>
+    <canvas id="renderCanvas" width="200" height="200" style="border: 1px solid #aaaafa;"></canvas>
+    <script>xx = xyz</script>
+    <br>
+    <a>XYZ: {{xyz}}</a>
+    <script>
+        const vertexShaderSource =
+            `attribute vec2 aPosition;
+            attribute float aPointSize;
+            attribute vec3 aColor;
+
+            varying vec3 vColor;
+
+            void main()
+            {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+                gl_PointSize = aPointSize;
+                vColor = aColor;
+            }`;
+
+        const fragmentShaderSource =
+            `precision mediump float;
+
+            varying vec3 vColor;
+
+            void main() // Center coordinate is (0.5, 0.5)
+            {
+                float d = distance(gl_PointCoord, vec2(0.5, 0.5));
+
+                if(d < 0.5)
+                {
+                    gl_FragColor = vec4(vColor, 1.0);
+                }
+                else
+                {
+                    discard;
+                }
+            }`;
+
+        const gl = document.getElementById("renderCanvas").getContext("webgl");
+
+        const vShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vShader, vertexShaderSource);
+        gl.compileShader(vShader);
+        console.log(gl.getShaderInfoLog(vShader));
+
+        const fShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fShader, fragmentShaderSource);
+        gl.compileShader(fShader);
+        console.log(gl.getShaderInfoLog(fShader));
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vShader);
+        gl.attachShader(program, fShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const vertices = new Float32Array({{xyz}}//[
+            // Color   Size   Coord
+            //1, 0, 0, 8, 0, 0.5,
+            //0, 1, 0, 12, -0.5, -0.5,
+            //0, 1, 1, 20, 0.5, -0.5]
+        );
+
+        const vbo = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        const FSIZE = vertices.BYTES_PER_ELEMENT;
+
+        const aColor = gl.getAttribLocation(program, "aColor");
+        gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, FSIZE * 6, FSIZE * 0);
+        gl.enableVertexAttribArray(aColor);
+
+        const aPointSize = gl.getAttribLocation(program, "aPointSize");
+        gl.vertexAttribPointer(aPointSize, 1, gl.FLOAT, false, FSIZE * 6, FSIZE * 3);
+        gl.enableVertexAttribArray(aPointSize);
+
+        const aPosition = gl.getAttribLocation(program, "aPosition");
+        gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, FSIZE * 6, FSIZE * 4);
+        gl.enableVertexAttribArray(aPosition);
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, 3);
+    </script>
+
+<div class="box">
+    <a>X: {{x}}</a>
+    <br>
+    <a>Y: {{y}}</a>
+    <br>
+    <a>Z: {{z}}</a>
+</div>
+</body>
+
+</html>
