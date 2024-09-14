@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Points Example</title>
+    <style>
+        canvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="glCanvas"></canvas>
+    <script>
+        // Vertex shader program
+        const vertexShaderSource = `
+            attribute vec3 aVertexPosition;
+            attribute vec3 aVertexColor;
+            varying vec3 vColor;
+            void main() {
+                gl_PointSize = 3.0; //point size in px
+                gl_Position = vec4(aVertexPosition, 1.0);
+                vColor = aVertexColor;
+            }
+        `;
+
+        // Fragment shader program
+        const fragmentShaderSource = `
+            precision mediump float;
+            varying vec3 vColor;
+            void main() {
+                gl_FragColor = vec4(vColor, 1.0);
+            }
+        `;
+
+        // Initialize WebGL
+        function initWebGL() {
+            const canvas = document.getElementById('glCanvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) {
+                alert('Unable to initialize WebGL. Your browser may not support it.');
+                return null;
+            }
+            return gl;
+        }
+
+        // Create shader program
+        function createShader(gl, sourceCode, type) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, sourceCode);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Create WebGL program
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = createShader(gl, vsSource, gl.VERTEX_SHADER);
+            const fragmentShader = createShader(gl, fsSource, gl.FRAGMENT_SHADER);
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        // Normalize points to the range [-1, 1] for WebGL clip space
+        function normalizePoints(points, min, max) {
+            const range = max - min;
+            return points.map(p => ((p - min) / range) * 2 - 1);
+        }
+
+        // Initialize buffer and draw points
+        function drawPoints(gl, points, colors) {
+            const min = Math.min(...points);
+            const max = Math.max(...points);
+            const normalizedPoints = normalizePoints(points, min, max);
+
+            const pointBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalizedPoints), gl.STATIC_DRAW);
+
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+            const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+            gl.useProgram(shaderProgram);
+
+            const positionAttributeLocation = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
+            gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+            const colorAttributeLocation = gl.getAttribLocation(shaderProgram, 'aVertexColor');
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.enableVertexAttribArray(colorAttributeLocation);
+            gl.vertexAttribPointer(colorAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+            gl.clearColor(0.0, 0.0, 0.0, 1.0); // Black background
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            gl.drawArrays(gl.POINTS, 0, points.length / 3);
+        }
+
+        function loadPointsAndColors(points, colors) {
+            try {
+                const gl = initWebGL();
+                if (gl) drawPoints(gl, points, colors);
+            } catch (error) {
+                console.error('Error loading points and colors:', error);
+            }
+        }
+
+        // Define points and colors
+        const points = [
+            0.0, 0.0, 0.0,   // Point 1: x=0, y=0, z=0
+            1.0, 1.0, 0.0,   // Point 2: x=1, y=1, z=0
+            -1.0, 1.0, 0.0,   // Point 3: x=-1, y=1, z=0
+            -1.0, -1.0, 0.0
+        ];
+
+        const colors = [
+            1.0, 0.0, 0.0,   // Color for Point 1: Red (r=1, g=0, b=0)
+            0.0, 1.0, 0.0,   // Color for Point 2: Green (r=0, g=1, b=0)
+            0.0, 0.0, 1.0,    // Color for Point 3: Blue (r=0, g=0, b=1)
+            0.0, 1.0, 1.0
+        ];
+
+        // Load points and colors
+        loadPointsAndColors(points, colors);
+    </script>
+</body>
+</html>
