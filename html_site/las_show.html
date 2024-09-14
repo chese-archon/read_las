@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAS Point Cloud with WebGL</title>
+    <style>
+        canvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="glCanvas"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/las-js@0.2.4/dist/las-js.min.js"></script>
+    <script>
+        // Vertex shader program
+        const vertexShaderSource = `
+            attribute vec3 aVertexPosition;
+            attribute vec3 aVertexColor;
+            varying vec3 vColor;
+            void main() {
+                gl_PointSize = 2.0; // Set the size of each point
+                gl_Position = vec4(aVertexPosition, 1.0);
+                vColor = aVertexColor; // Pass the color to the fragment shader
+            }
+        `;
+
+        // Fragment shader program
+        const fragmentShaderSource = `
+            precision mediump float;
+            varying vec3 vColor;
+            void main() {
+                gl_FragColor = vec4(vColor, 1.0); // Use the color from the vertex shader
+            }
+        `;
+
+        // Initialize WebGL
+        function initWebGL() {
+            const canvas = document.getElementById('glCanvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) {
+                alert('Unable to initialize WebGL. Your browser may not support it.');
+                return null;
+            }
+            return gl;
+        }
+
+        // Create shader program
+        function createShader(gl, sourceCode, type) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, sourceCode);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Create WebGL program
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = createShader(gl, vsSource, gl.VERTEX_SHADER);
+            const fragmentShader = createShader(gl, fsSource, gl.FRAGMENT_SHADER);
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        // Normalize points to the range [-1, 1] for WebGL clip space
+        function normalizePoints(points, min, max) {
+            const range = max - min;
+            return points.map(p => ((p - min) / range) * 2 - 1);
+        }
+
+        // Initialize buffer and draw points
+        function drawPoints(gl, points, colors) {
+            // Normalize point positions
+            const min = Math.min(...points);
+            const max = Math.max(...points);
+            const normalizedPoints = normalizePoints(points, min, max);
+
+            // Create a buffer for the points
+            const pointBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalizedPoints), gl.STATIC_DRAW);
+
+            // Create a buffer for the colors
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+            // Bind shader program
+            const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+            gl.useProgram(shaderProgram);
+
+            // Set up position attribute
+            const positionAttributeLocation = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
+            gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+            // Set up color attribute
+            const colorAttributeLocation = gl.getAttribLocation(shaderProgram, 'aVertexColor');
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.enableVertexAttribArray(colorAttributeLocation);
+            gl.vertexAttribPointer(colorAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+            // Clear the canvas
+            gl.clearColor(1.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            // Draw the points
+            gl.drawArrays(gl.POINTS, 0, points.length / 3);
+        }
+
+        // Read LAS file and extract points and colors
+        async function loadLasFile(filePath) {
+            try {
+                const response = await fetch(filePath);
+                const arrayBuffer = await response.arrayBuffer();
+                const lasData = new LASFile(arrayBuffer);
+                const data = await lasData.read();
+
+                const points = [];
+                const colors = [];
+                data.points.forEach((point) => {
+                    points.push(point.position[0], point.position[1], point.position[2]);
+
+                    // Extract color if available; normalize to [0, 1] range
+                    if (point.color) {
+                        colors.push(point.color.red / 65535, point.color.green / 65535, point.color.blue / 65535);
+                    } else {
+                        // Default to white if color is not available
+                        colors.push(1.0, 1.0, 1.0);
+                    }
+                });
+
+                const gl = initWebGL();
+                if (gl) drawPoints(gl, points, colors);
+            } catch (error) {
+                console.error('Error loading LAS file:', error);
+            }
+        }
+
+        // Call the function with the path to the LAS file
+        const filePath = 'C:/Users/IVAN/Downloads/drow_las/read_las/serpent-small.las'; // Replace this with the relative path to your file
+        loadLasFile(filePath);
+    </script>
+</body>
+</html>
