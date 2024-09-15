@@ -128,7 +128,7 @@ def las4(request):
     # Конвертируем в JSON и передаем в шаблон
     return render(request, 'tpy4.html', {'points': json.dumps(points)})
 
-def las(request):
+def las5(request):
     path = "C:/Users/irin3/PycharmProjects/pythonProject6/pythonProject3/pashtech/pashtech_site/pashtech_app/templates/serpent-small.las"
 
     # Чтение файла .las
@@ -147,3 +147,23 @@ def las(request):
 
     # Конвертируем в JSON и передаем в шаблон
     return render(request, 'tpy5.html', {'points': json.dumps(points)})
+
+def las(request):
+    path = "C:/Users/irin3/PycharmProjects/pythonProject6/pythonProject3/pashtech/pashtech_site/pashtech_app/templates/serpent-small.las"
+
+    # Чтение файла .las
+    las = laspy.read(path)
+    points = []
+
+    for x, y, z, r, g, b in zip(las.x, las.y, las.z, las.red, las.green, las.blue):
+        points.append({
+            'x': x,
+            'y': y,
+            'z': z,
+            'r': r / 65535,  # Нормализуем цветовые значения в диапазон от 0 до 1
+            'g': g / 65535,
+            'b': b / 65535
+        })# just black canvas
+
+    # Конвертируем в JSON и передаем в шаблон
+    return render(request, 'tpy6.html', {'points': json.dumps(points)})
