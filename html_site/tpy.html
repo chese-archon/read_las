@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point Cloud Viewer</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Получаем данные точек из контекста Django
+const pointsData = JSON.parse('{{ points|escapejs }}');
+
+// Настройка сцены и камеры Three.js
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Создаем геометрию облака точек
+const geometry = new THREE.BufferGeometry();
+const vertices = [];
+
+// Нормализация или масштабирование точек, если необходимо
+let minX = Infinity, minY = Infinity, minZ = Infinity;
+let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+pointsData.forEach(point => {
+if (point.x < minX) minX = point.x;
+if (point.y < minY) minY = point.y;
+if (point.z < minZ) minZ = point.z;
+if (point.x > maxX) maxX = point.x;
+if (point.y > maxY) maxY = point.y;
+if (point.z > maxZ) maxZ = point.z;
+});
+
+const scale = 0.1; // Масштабируем координаты для лучшего отображения
+
+pointsData.forEach(point => {
+vertices.push(
+(point.x - minX) * scale,
+(point.y - minY) * scale,
+(point.z - minZ) * scale
+);
+});
+
+geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+// Настраиваем материал точек (увеличиваем размер точек)
+const material = new THREE.PointsMaterial({ color: 0x00ff00, size: 1.0 });
+const points = new THREE.Points(geometry, material);
+scene.add(points);
+
+// Располагаем камеру так, чтобы она охватывала все точки
+camera.position.set((maxX - minX) * scale / 2, (maxY - minY) * scale / 2, (maxZ - minZ) * scale * 2);
+camera.lookAt((maxX - minX) * scale / 2, (maxY - minY) * scale / 2, (maxZ - minZ) * scale / 2);
+
+// Анимация
+function animate() {
+requestAnimationFrame(animate);
+renderer.render(scene, camera);
+}
+animate();
+    </script>
+</body>
+</html>
