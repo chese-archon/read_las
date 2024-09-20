@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<a>DATA</a>
+<b>{{ data }}</b>
+<br>
+<h1>Список данных из таблицы</h1>
+    <ul>
+        {% for item in data %}
+            <li>Name: {{ item.name }}, Number: {{ item.number }}</li>
+        {% endfor %}
+    </ul>
+<br>
+<h2>Add Data to Table1</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label for="field1">Field 1:</label><br>
+        <input type="text" id="field1" name="field1"><br><br>
+        <label for="field2">Field 2:</label><br>
+        <input type="number" id="field2" name="field2"><br><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
